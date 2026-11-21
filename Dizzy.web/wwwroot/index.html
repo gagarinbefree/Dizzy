@@ -113,12 +113,17 @@
             place-items: center;
         }
 
+        #status-artwork {
+            grid-area: 1 / 1;
+            position: relative;
+            width: min(100%, calc(100vh * 4 / 3));
+            width: min(100%, calc(100dvh * 4 / 3));
+        }
+
         #status-splash {
-            position: absolute;
-            inset: 0;
+            display: block;
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            height: auto;
             image-rendering: pixelated;
         }
 
@@ -164,6 +169,7 @@
         }
 
         #status-notice {
+            grid-area: 1 / 1;
             background-color: #5b3943;
             border-radius: 0.5rem;
             border: 1px solid #9b3943;
@@ -192,8 +198,10 @@
     </noscript>
 
     <div id="status">
-        <img id="status-splash" src="load.png" width="512" height="384" alt="Dizzy looking across the valley towards Zaks’s castle">
-        <div id="status-bar"><progress id="status-progress" aria-label="Loading progress"></progress></div>
+        <div id="status-artwork">
+            <img id="status-splash" src="load.png" width="512" height="384" alt="Dizzy looking across the valley towards Zaks’s castle">
+            <div id="status-bar"><progress id="status-progress" aria-label="Loading progress"></progress></div>
+        </div>
         <div id="status-notice" class="alert" role="alert"></div>
     </div>
 
