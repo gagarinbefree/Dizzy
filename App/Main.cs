@@ -145,7 +145,7 @@ public partial class Main : Node2D
         music.Stream = assetRoot == "res://Assets"
             ? (ResourceLoader.Exists(path) ? GD.Load<AudioStream>(path) : null)
             : (FileAccess.FileExists(path) ? AudioStreamWav.LoadFromFile(path) : null);
-        if (music.Stream != null) music.Play();
+        if (music.Stream != null && DisplayServer.GetName() != "headless") music.Play();
     }
 
     private void StartGame()
