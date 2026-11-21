@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Dizzy</title>
+<style>:root { color-scheme: dark; background: black; font-family: system-ui, sans-serif; }</style>
+<body>
+<noscript>Enable JavaScript to play Dizzy.</noscript>
+<p id="notice" role="status"></p>
+<script type="module">
+    // Also served as the Pages 404 document for bookmarks to retired builds.
+    const retired = location.pathname.match(/^(.*\/)builds\/(\d+-\d+)\/(?:index\.html)?$/);
+    const root = new URL(retired ? retired[1] : './', location.href);
+    const notice = document.getElementById('notice');
+    try {
+        const pointer = new URL('version.json', root);
+        pointer.searchParams.set('t', Date.now());
+        const response = await fetch(pointer, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Version unavailable');
+        const { build } = await response.json();
+        if (typeof build !== 'string' || !/^\d+-\d+$/.test(build) || retired?.[2] === build) {
+            throw new Error('Build unavailable');
+        }
+        const target = new URL('builds/' + build + '/', root);
+        target.search = location.search;
+        target.hash = location.hash;
+        location.replace(target);
+    } catch {
+        const retry = document.createElement('a');
+        retry.href = root.href;
+        retry.textContent = 'Try again';
+        notice.append('Could not load the current version of Dizzy. ', retry);
+    }
+</script>
+</body>
+</html>

@@ -9,7 +9,19 @@ async function main() {
   try {
     const page = await browser.newPage();
     const errors = [];
-    page.on('pageerror', error => errors.push(error.message));
+    page.on('pageerror', error => {
+      console.error(error.message);
+      errors.push(error.message);
+    });
+    await page.addInitScript(() => {
+      window.shortSounds = 0;
+      const start = AudioBufferSourceNode.prototype.start;
+      AudioBufferSourceNode.prototype.start = function (...args) {
+        const result = start.apply(this, args);
+        if (this.buffer && this.buffer.duration > 0 && this.buffer.duration < 0.05) window.shortSounds++;
+        return result;
+      };
+    });
     const ready = page.waitForEvent('console', {
       predicate: message => message.text().includes('DIZZY_TITLE_READY'), timeout: 120_000,
     });
@@ -23,7 +35,27 @@ async function main() {
       }),
       page.keyboard.press('Enter'),
     ]);
-    const manifest = await page.request.get(new URL('manifest.webmanifest', url).href);
+    const baseline = await page.evaluate(() => window.shortSounds);
+    await page.keyboard.down('ArrowRight');
+    try {
+      await page.waitForFunction(n => window.shortSounds >= n + 2, baseline, { timeout: 30_000 });
+    } finally {
+      await page.keyboard.up('ArrowRight');
+    }
+    await page.keyboard.down('Space');
+    await page.waitForTimeout(300);
+    await page.keyboard.up('Space');
+    await page.keyboard.down('q');
+    await page.waitForTimeout(500);
+    await page.keyboard.up('q');
+    await Promise.all([
+      page.waitForEvent('console', {
+        predicate: message => message.text().includes('DIZZY_GAME_STARTED room=74'), timeout: 10_000,
+      }),
+      page.keyboard.press('Enter'),
+    ]);
+    const manifestUrl = await page.locator('link[rel="manifest"]').evaluate(link => link.href);
+    const manifest = await page.request.get(manifestUrl);
     assert.equal(manifest.ok(), true);
     const data = await manifest.json();
     assert.equal(data.display, 'standalone');
@@ -34,8 +66,15 @@ async function main() {
     const version = await (await page.request.get(new URL('version.json', url).href)).json();
     assert.match(version.version, /^0\.1\.\d+$/);
     if (process.env.GITHUB_RUN_NUMBER) assert.equal(version.version, `0.1.${process.env.GITHUB_RUN_NUMBER}`);
+    if (version.build) {
+      const buildUrl = new URL(`builds/${version.build}/`, url);
+      assert.equal(new URL(page.url()).pathname, buildUrl.pathname);
+      const runtime = await page.evaluate(() => performance.getEntriesByType('resource')
+        .map(entry => entry.name).filter(name => name.includes('/_framework/')));
+      assert.ok(runtime.length > 0 && runtime.every(name => name.startsWith(buildUrl.href)));
+    }
     assert.deepEqual(errors, []);
-    console.log(`Browser build ${version.version} starts and serves its PWA manifest.`);
+    console.log(`Browser build ${version.version} played footsteps and started a second game after movement and jump input.`);
   } finally {
     await browser.close();
   }

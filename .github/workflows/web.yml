@@ -70,16 +70,27 @@ jobs:
           python tools/set_build_version.py "$GITHUB_RUN_NUMBER"
           dotnet build Dizzy.csproj --configuration Debug
           dotnet publish Dizzy.web --configuration Release -p:TwoDogRequireImport=true -p:TwoDogWebPrecompress=false
-          cp -R gallery Dizzy.web/AppBundle/
+          # Give every deployment, including workflow reruns, its own runtime URLs.
+          SITE=build/pages
+          BUILD="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$SITE/builds"
+          mv Dizzy.web/AppBundle "$SITE/builds/$BUILD"
+          BUNDLE="$SITE/builds/$BUILD"
+          cp tools/pages-entry.html "$SITE/index.html"
+          cp tools/pages-entry.html "$SITE/404.html"
+          cp -R gallery "$SITE/"
+          cp "$BUNDLE"/{manifest.webmanifest,icon-192.png,icon-512.png,favicon.ico} "$SITE/"
+          sed -i 's|href="manifest.webmanifest"|href="../../manifest.webmanifest"|' "$BUNDLE/index.html"
+          jq --arg build "$BUILD" '. + {build: $build}' "$BUNDLE/version.json" > "$SITE/version.json"
       - name: Test browser startup and PWA metadata
         run: |
           npm install --no-save --ignore-scripts playwright@1.56.1
-          python -m http.server 8765 --directory Dizzy.web/AppBundle > "$RUNNER_TEMP/dizzy-web.log" 2>&1 &
+          python -m http.server 8765 --directory build/pages > "$RUNNER_TEMP/dizzy-web.log" 2>&1 &
           node tools/web-smoke.cjs
       - uses: actions/upload-pages-artifact@v5
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         with:
-          path: Dizzy.web/AppBundle
+          path: build/pages
 
   pages:
     name: Deploy GitHub Pages

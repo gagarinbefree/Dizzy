@@ -184,8 +184,9 @@ public partial class Main : Node2D
         if (game.Sounds.Count != 0)
         {
             var timelines = game.Sounds.Select(Beeper.Effect).ToArray();
-            byte[] pcm = timelines.SelectMany(Beeper.Render).ToArray();
-            effects.Stream = new AudioStreamWav { Format = AudioStreamWav.FormatEnum.Format16Bits, MixRate = 44100, Data = pcm };
+            const int sampleRate = 44100;
+            byte[] pcm = timelines.SelectMany(timeline => Beeper.Render(timeline, sampleRate)).ToArray();
+            effects.Stream = new AudioStreamWav { Format = AudioStreamWav.FormatEnum.Format16Bits, MixRate = sampleRate, Data = pcm };
             effects.Play();
             blockedSeconds = timelines.Sum(t => t.TStates) / 3500000.0;
         }
