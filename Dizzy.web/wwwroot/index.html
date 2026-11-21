@@ -117,8 +117,9 @@
         }
 
         #status-splash {
-            width: clamp(96px, 22vmin, 200px);
+            width: min(256px, 80vw, 70vh);
             height: auto;
+            image-rendering: pixelated;
             animation: status-splash-pulse 2.4s ease-in-out infinite;
         }
 
@@ -207,8 +208,7 @@
     </noscript>
 
     <div id="status">
-        <!-- Set src to splash.svg, splash.png, or splash.webp to choose the image format. -->
-        <img id="status-splash" src="splash.svg" alt="Loading">
+        <img id="status-splash" src="loading-screen.png" width="256" height="192" alt="Dizzy looking across the valley towards Zaks’s castle">
         <div id="status-bar"><progress id="status-progress" aria-label="Loading progress"></progress></div>
         <div id="status-notice" class="alert" role="alert"></div>
     </div>
