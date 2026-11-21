@@ -267,8 +267,9 @@ public partial class Main : Node2D
     {
         if (texture == null) return;
         DrawTexture(texture, Vector2.Zero);
-        var font = ThemeDB.FallbackFont;
-        DrawString(font, new Vector2(5, 203), title ? "SPACE / ENTER - START" : pause ? "PAUSED - PRESS P AGAIN" : "Z / X  MOVE     SPACE  JUMP     ENTER  USE", fontSize: 8, modulate: Colors.White);
-        DrawString(font, new Vector2(5, 216), title && notice != "" ? notice : "P  PAUSE     Q  TITLE     F5  RESTART", fontSize: 8, modulate: new Color(.65f, .7f, .8f));
+        string status = pause ? "PAUSED" : title ? notice : "";
+        if (status.Length == 0) return;
+        DrawStringOutline(ThemeDB.FallbackFont, new Vector2(0, 96), status, HorizontalAlignment.Center, 256, 10, 3, Colors.Black);
+        DrawString(ThemeDB.FallbackFont, new Vector2(0, 96), status, HorizontalAlignment.Center, 256, 10, Colors.White);
     }
 }
