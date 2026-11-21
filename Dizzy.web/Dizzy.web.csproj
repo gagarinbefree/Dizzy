@@ -26,7 +26,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="../Dizzy.csproj"/>
-        <WasmExtraFilesToDeploy Include="../gallery/loading-screen.png" />
+        <WasmExtraFilesToDeploy Include="../Assets/load.png" />
     </ItemGroup>
 
     <!-- Scripts are resolved by reflection: root the game assembly, and any NuGet package your game reaches

@@ -80,7 +80,7 @@ jobs:
           cp tools/pages-entry.html "$BUNDLE/index.html"
           cp tools/pages-entry.html "$SITE/404.html"
           cp -R gallery "$SITE/"
-          cp "$BUNDLE"/{manifest.webmanifest,icon-*.png,favicon*,loading-screen.png} "$SITE/"
+          cp "$BUNDLE"/{manifest.webmanifest,icon-*.png,favicon*,load.png} "$SITE/"
           jq --arg build "$BUILD" '. + {build: $build}' "$BUNDLE/version.json" > "$SITE/version.json"
       - name: Test browser startup and PWA metadata
         run: |

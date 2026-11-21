@@ -2,7 +2,7 @@
 
 **[Play in your browser](https://gagarinbefree.github.io/Dizzy/)** · **[Download for Windows or Android](https://github.com/gagarinbefree/Dizzy/releases/latest)**
 
-[![The original Spectrum loading screen shows Dizzy looking out across a valley towards Zaks’s castle.](gallery/loading-screen.png)](https://gagarinbefree.github.io/Dizzy/)
+[![The original Spectrum loading screen shows Dizzy looking out across a valley towards Zaks’s castle.](Assets/load.png)](https://gagarinbefree.github.io/Dizzy/)
 
 Dizzy went into the Haunted Forest to pick berries. He came home with a much stranger find. Under the dirt on a stone slab was a recipe his Eggfather once told him about. Brew it properly and it can put an end to the wizard Zaks. With any luck, the Yolkfolk might even get a dry Sunday for cricket.
 
