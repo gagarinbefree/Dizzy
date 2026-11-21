@@ -11,11 +11,18 @@ async function main() {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const ready = page.waitForEvent('console', {
-      predicate: message => message.text().includes('DIZZY_BUILD_READY'), timeout: 120_000,
+      predicate: message => message.text().includes('DIZZY_TITLE_READY'), timeout: 120_000,
     });
     const url = process.env.DIZZY_WEB_URL || 'http://127.0.0.1:8765/';
     await Promise.all([ready, page.goto(url)]);
     assert.equal(await page.locator('canvas#canvas').isVisible(), true);
+    await page.locator('canvas#canvas').focus();
+    await Promise.all([
+      page.waitForEvent('console', {
+        predicate: message => /DIZZY_GAME_STARTED room=\d+/.test(message.text()), timeout: 30_000,
+      }),
+      page.keyboard.press('Enter'),
+    ]);
     const manifest = await page.request.get(new URL('manifest.webmanifest', url).href);
     assert.equal(manifest.ok(), true);
     const data = await manifest.json();

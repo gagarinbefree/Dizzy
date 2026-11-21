@@ -44,13 +44,12 @@ jobs:
       - name: Compile and start a clean project
         shell: bash
         run: |
-          test ! -e Assets
           dotnet build Dizzy.csproj --configuration Debug
           dotnet build Tests/KernelChecks.csproj --configuration Debug
           "$GODOT" --headless --path . --editor --import
           "$GODOT" --headless --path . --quit-after 30 2>&1 | tee "$RUNNER_TEMP/dizzy-startup.log"
-          grep -F DIZZY_BUILD_READY "$RUNNER_TEMP/dizzy-startup.log"
-          ! grep -F 'ERROR:' "$RUNNER_TEMP/dizzy-startup.log"
+          grep -F DIZZY_TITLE_READY "$RUNNER_TEMP/dizzy-startup.log"
+          if grep -F 'ERROR:' "$RUNNER_TEMP/dizzy-startup.log"; then exit 1; fi
 
   browser:
     name: Build and test Web/PWA
@@ -149,7 +148,7 @@ jobs:
           $log = Join-Path (Get-Location).Path 'build/windows-smoke.log'
           $exe = (Resolve-Path -LiteralPath 'build/windows/Dizzy.exe').Path
           $process = Start-Process -FilePath $exe -ArgumentList '--headless', '--audio-driver', 'Dummy', '--quit-after', '60', '--log-file', $log -WindowStyle Hidden -Wait -PassThru
-          if ($process.ExitCode -ne 0 -or !(Select-String -LiteralPath $log -Pattern 'DIZZY_BUILD_READY' -Quiet) -or (Select-String -LiteralPath $log -Pattern 'ERROR:' -Quiet)) { throw 'Windows startup check failed' }
+          if ($process.ExitCode -ne 0 -or !(Select-String -LiteralPath $log -Pattern 'DIZZY_TITLE_READY' -Quiet) -or (Select-String -LiteralPath $log -Pattern 'ERROR:' -Quiet)) { throw 'Windows startup check failed' }
           Compress-Archive -Path 'build/windows/*' -DestinationPath "build/Dizzy-Windows-$env:VERSION.zip"
       - uses: actions/upload-artifact@v7
         with:
@@ -259,5 +258,5 @@ jobs:
             gh release upload "$TAG" "${FILES[@]}" --repo "$GITHUB_REPOSITORY" --clobber
           else
             gh release create "$TAG" "${FILES[@]}" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-              --title "Dizzy $VERSION" --notes 'Godot build without bundled game data. See the README for local game data.' --latest
+              --title "Dizzy $VERSION" --notes 'Includes the game data and music. Press Space or Enter to start.' --latest
           fi

@@ -50,7 +50,6 @@ public partial class Main : Node2D
                 AutowrapMode = TextServer.AutowrapMode.WordSmart,
                 Text = "Local game data required\nSee the project README."
             });
-            GD.Print("DIZZY_BUILD_READY");
             return;
         }
 
@@ -90,7 +89,11 @@ public partial class Main : Node2D
             GD.Print($"GODOT_SMOKE_OK room={game.Player["room"]} x={game.Player["x"]} y={game.Player["y"]} lives={game.Lives} screenshot={path}");
             GetTree().Quit();
         }
-        else PlayMusic(0);
+        else
+        {
+            PlayMusic(0);
+            GD.Print("DIZZY_TITLE_READY");
+        }
     }
 
     private static bool HasGameData(string root) =>
@@ -153,6 +156,7 @@ public partial class Main : Node2D
         if (!smokeTest) PlayMusic(1);
         blockedSeconds = smokeTest ? 0 : .979;
         RefreshScreen();
+        GD.Print($"DIZZY_GAME_STARTED room={game.Player["room"]}");
     }
 
     public override void _UnhandledKeyInput(InputEvent @event)

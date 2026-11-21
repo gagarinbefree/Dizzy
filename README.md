@@ -6,7 +6,7 @@
 
 GitHub Actions проверяет запуск Godot и браузерной сборки. Успешные запуски на `main` публикуют Web/PWA на GitHub Pages, ZIP для Windows x64 и подписанный APK для Android в одном GitHub Release. Версия `0.1.N` соответствует номеру запуска, Android `versionCode` равен `1000 + N`. APK также публикуется в GitHub Packages.
 
-Публичный репозиторий и сборки содержат исходный код и экран готовности. Игровые данные хранятся локально в `Assets/`. Локальный проект видит их через `res://Assets`, а установленная сборка может читать `world.json`, `start-state.json` и необязательный каталог `Audio/` из `user://Assets`. В Windows `user://` находится в `%APPDATA%\Godot\app_userdata\Dizzy — Godot port`. Опубликованный сайт открывается без игровых данных.
+Игровой мир, начальное состояние и пять музыкальных записей находятся в `Assets/` и входят в веб-сборку, Windows ZIP и Android APK. На GitHub Pages нажмите Enter или пробел на заставке, чтобы начать игру.
 
 Локальная веб-сборка с .NET 10 и `wasm-tools`:
 

@@ -1,7 +1,6 @@
 .godot/
 **/bin/
 **/obj/
-Assets/
 Artifacts/
 Dizzy.web/AppBundle/
 build/
