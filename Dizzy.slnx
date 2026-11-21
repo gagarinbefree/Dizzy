@@ -1,0 +1,15 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Editor" />
+    <BuildType Name="Release" />
+  </Configurations>
+  <Folder Name="/Core/">
+    <Project Path="Core/Dizzy.Core.csproj" />
+  </Folder>
+  <Project Path="Dizzy.csproj" />
+  <Project Path="Dizzy.web/Dizzy.web.csproj">
+    <BuildType Solution="Editor|*" Project="Debug" />
+    <Build Project="false" />
+  </Project>
+</Solution>

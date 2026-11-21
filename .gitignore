@@ -1,0 +1,13 @@
+.godot/
+**/bin/
+**/obj/
+Assets/
+Artifacts/
+Dizzy.web/AppBundle/
+build/
+.secrets/
+node_modules/
+__pycache__/
+*.keystore
+*.jks
+*.p12

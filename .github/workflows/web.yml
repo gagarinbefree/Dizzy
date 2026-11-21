@@ -1,0 +1,263 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_RELEASE: 4.7.2-stable
+  GODOT_VERSION: 4.7.2.stable.mono
+  VERSION: 0.1.${{ github.run_number }}
+
+jobs:
+  godot-tests:
+    name: Test Godot startup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Get Godot .NET for Linux
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/godot"
+          ARCHIVE="Godot_v${GODOT_RELEASE}_mono_linux_x86_64.zip"
+          gh release download "$GODOT_RELEASE" --repo godotengine/godot-builds --pattern "$ARCHIVE" --dir "$RUNNER_TEMP/godot"
+          unzip -q "$RUNNER_TEMP/godot/$ARCHIVE" -d "$RUNNER_TEMP/godot"
+          GODOT="$(find "$RUNNER_TEMP/godot" -type f -name 'Godot*linux.x86_64' -print -quit)"
+          test -n "$GODOT"
+          chmod +x "$GODOT"
+          echo "GODOT=$GODOT" >> "$GITHUB_ENV"
+      - name: Compile and start a clean project
+        shell: bash
+        run: |
+          test ! -e Assets
+          dotnet build Dizzy.csproj --configuration Debug
+          dotnet build Tests/KernelChecks.csproj --configuration Debug
+          "$GODOT" --headless --path . --editor --import
+          "$GODOT" --headless --path . --quit-after 30 2>&1 | tee "$RUNNER_TEMP/dizzy-startup.log"
+          grep -F DIZZY_BUILD_READY "$RUNNER_TEMP/dizzy-startup.log"
+          ! grep -F 'ERROR:' "$RUNNER_TEMP/dizzy-startup.log"
+
+  browser:
+    name: Build and test Web/PWA
+    needs: godot-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Publish browser bundle
+        run: |
+          dotnet workload install wasm-tools
+          python tools/set_build_version.py "$GITHUB_RUN_NUMBER"
+          dotnet build Dizzy.csproj --configuration Debug
+          dotnet publish Dizzy.web --configuration Release -p:TwoDogRequireImport=true -p:TwoDogWebPrecompress=false
+      - name: Test browser startup and PWA metadata
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          python -m http.server 8765 --directory Dizzy.web/AppBundle > "$RUNNER_TEMP/dizzy-web.log" 2>&1 &
+          node tools/web-smoke.cjs
+      - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          path: Dizzy.web/AppBundle
+
+  pages:
+    name: Deploy GitHub Pages
+    needs: browser
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5
+
+  windows:
+    name: Windows x64 build
+    needs: browser
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/cache@v5
+        with:
+          path: .godot/windows_release_x86_64.exe
+          key: godot-4.7.2-mono-windows-x64-release-abb825fa
+      - name: Install Godot and export template
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $godotDir = Join-Path $env:RUNNER_TEMP 'godot'
+          New-Item -ItemType Directory -Force -Path $godotDir | Out-Null
+          $archive = "Godot_v${env:GODOT_RELEASE}_mono_win64.zip"
+          gh release download $env:GODOT_RELEASE --repo godotengine/godot-builds --pattern $archive --dir $godotDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Expand-Archive -LiteralPath (Join-Path $godotDir $archive) -DestinationPath $godotDir
+          $godot = Get-ChildItem -LiteralPath $godotDir -Filter '*_console.exe' -File -Recurse | Select-Object -First 1 -ExpandProperty FullName
+          if (!$godot) { throw 'Godot console executable missing' }
+          "GODOT=$godot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          python tools/get_windows_template.py .godot/windows_release_x86_64.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $templates = Join-Path $env:APPDATA "Godot/export_templates/$env:GODOT_VERSION"
+          New-Item -ItemType Directory -Force -Path $templates | Out-Null
+          Copy-Item -LiteralPath '.godot/windows_release_x86_64.exe' -Destination $templates
+          Set-Content -LiteralPath (Join-Path $templates 'version.txt') -Value $env:GODOT_VERSION -NoNewline
+      - name: Export and smoke-test Windows release
+        shell: pwsh
+        run: |
+          python tools/set_build_version.py $env:GITHUB_RUN_NUMBER
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build Dizzy.csproj --configuration Debug
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:GODOT --headless --path . --editor --import
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force -Path build/windows | Out-Null
+          & $env:GODOT --headless --path . --export-release 'Windows Desktop' 'build/windows/Dizzy.exe'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($file in @('Dizzy.exe', 'Dizzy.pck', 'data_Dizzy_windows_x86_64/Dizzy.dll')) {
+            if (!(Test-Path -LiteralPath "build/windows/$file")) { throw "Missing Windows file $file" }
+          }
+          $log = Join-Path (Get-Location).Path 'build/windows-smoke.log'
+          $exe = (Resolve-Path -LiteralPath 'build/windows/Dizzy.exe').Path
+          $process = Start-Process -FilePath $exe -ArgumentList '--headless', '--audio-driver', 'Dummy', '--quit-after', '60', '--log-file', $log -WindowStyle Hidden -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or !(Select-String -LiteralPath $log -Pattern 'DIZZY_BUILD_READY' -Quiet) -or (Select-String -LiteralPath $log -Pattern 'ERROR:' -Quiet)) { throw 'Windows startup check failed' }
+          Compress-Archive -Path 'build/windows/*' -DestinationPath "build/Dizzy-Windows-$env:VERSION.zip"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Dizzy-Windows-${{ env.VERSION }}
+          path: build/Dizzy-Windows-*.zip
+          if-no-files-found: error
+
+  android:
+    name: Android APK
+    needs: browser
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          server-id: github
+      - name: Install Android SDK and prepare release signing
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE"
+          umask 077
+          printf '%s' "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/dizzy-release.p12"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/dizzy-release.p12" >> "$GITHUB_ENV"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: actions/cache@v5
+        with:
+          path: .godot/android_release.apk
+          key: godot-4.7.2-mono-android-release-588903fb
+      - name: Install Godot .NET and verified Android template
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/godot"
+          ARCHIVE="Godot_v${GODOT_RELEASE}_mono_linux_x86_64.zip"
+          gh release download "$GODOT_RELEASE" --repo godotengine/godot-builds --pattern "$ARCHIVE" --dir "$RUNNER_TEMP/godot"
+          unzip -q "$RUNNER_TEMP/godot/$ARCHIVE" -d "$RUNNER_TEMP/godot"
+          GODOT="$(find "$RUNNER_TEMP/godot" -type f -name 'Godot*linux.x86_64' -print -quit)"
+          test -n "$GODOT"
+          chmod +x "$GODOT"
+          echo "GODOT=$GODOT" >> "$GITHUB_ENV"
+          python tools/get_android_template.py .godot/android_release.apk
+          mkdir -p "$HOME/.config/godot"
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/java_sdk_path = "%s"\nexport/android/android_sdk_path = "%s"\n' "$JAVA_HOME" "$ANDROID_HOME" > "$HOME/.config/godot/editor_settings-4.7.tres"
+      - name: Export Android and verify signature and version
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_KEY_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$GODOT_ANDROID_KEYSTORE_RELEASE_USER"
+          test -n "$GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD"
+          python tools/set_build_version.py "$GITHUB_RUN_NUMBER"
+          dotnet build Dizzy.csproj --configuration Debug
+          "$GODOT" --headless --path . --editor --import
+          mkdir -p build/android
+          APK="build/android/Dizzy-${VERSION}.apk"
+          "$GODOT" --headless --path . --export-release Android "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "versionCode='$((1000 + GITHUB_RUN_NUMBER))' versionName='$VERSION'"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Dizzy-Android-${{ env.VERSION }}
+          path: build/android/*.apk
+          if-no-files-found: error
+      - name: Publish APK to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mvn --batch-mode org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file \
+            -Dfile="build/android/Dizzy-${VERSION}.apk" \
+            -DgroupId=io.github.gagarinbefree -DartifactId=dizzy-android \
+            -Dversion="$VERSION" -Dpackaging=apk -DgeneratePom=true \
+            -DrepositoryId=github -Durl="https://maven.pkg.github.com/${GITHUB_REPOSITORY}"
+
+  release:
+    name: Publish GitHub Release
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: Dizzy-*-${{ env.VERSION }}
+          path: build
+          merge-multiple: true
+      - name: Attach Windows ZIP and signed Android APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$VERSION"
+          FILES=("build/Dizzy-${VERSION}.apk" "build/Dizzy-Windows-${VERSION}.zip")
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "Dizzy $VERSION" --notes 'Godot build without bundled game data. See the README for local game data.' --latest
+          fi
