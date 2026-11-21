@@ -26,19 +26,48 @@
         const TWODOG_PCK_GZ = false;
         // The hints must name the files the engine fetches, or both download.
         const twodogGz = TWODOG_PCK_GZ && typeof DecompressionStream !== 'undefined';
-        for (const file of ['godot.wasm', 'godot.pck']) {
-            const hint = document.createElement('link');
-            hint.rel = 'preload';
-            hint.as = 'fetch';
-            hint.crossOrigin = 'anonymous';
-            hint.href = twodogGz ? file + '.gz' : file;
-            document.head.appendChild(hint);
+        async function loadEngine() {
+            const home = new URL(location.href);
+            if (home.searchParams.has('_dizzy_home')) {
+                home.searchParams.delete('_dizzy_home');
+                history.replaceState(history.state, '', home);
+            }
+            const pointer = new URL('version.json', location.href);
+            pointer.searchParams.set('t', Date.now());
+            const response = await fetch(pointer, { cache: 'no-store' });
+            if (!response.ok) throw new Error('Could not load the game version.');
+            const { build } = await response.json();
+            if (build !== undefined) {
+                if (!/^\d+-\d+$/.test(build)) throw new Error('Invalid game build.');
+                const manifest = document.querySelector('link[rel="manifest"]');
+                manifest.href = new URL('manifest.webmanifest', home).href;
+                const base = document.createElement('base');
+                base.href = new URL('builds/' + build + '/', location.href).href;
+                document.head.prepend(base);
+            }
+            for (const file of ['godot.wasm', 'godot.pck']) {
+                const hint = document.createElement('link');
+                hint.rel = 'preload';
+                hint.as = 'fetch';
+                hint.crossOrigin = 'anonymous';
+                hint.href = twodogGz ? file + '.gz' : file;
+                document.head.appendChild(hint);
+            }
+            for (const file of ['dotnet.js', 'dotnet.boot.js', 'dotnet.runtime.js', 'dotnet.native.js']) {
+                const hint = document.createElement('link');
+                hint.rel = 'modulepreload';
+                hint.href = '_framework/' + file;
+                document.head.appendChild(hint);
+            }
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'godot.js';
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('Could not load the game engine.'));
+                document.head.appendChild(script);
+            });
         }
     </script>
-    <link rel="modulepreload" href="_framework/dotnet.js">
-    <link rel="modulepreload" href="_framework/dotnet.boot.js">
-    <link rel="modulepreload" href="_framework/dotnet.runtime.js">
-    <link rel="modulepreload" href="_framework/dotnet.native.js">
     <style>
         html,
         body,
@@ -184,7 +213,6 @@
         <div id="status-notice" class="alert" role="alert"></div>
     </div>
 
-    <script src="godot.js"></script>
     <script>
         const GODOT_CONFIG = {
             'args': [],
@@ -197,7 +225,7 @@
         };
         const GODOT_THREADS_ENABLED = false;
 
-        (function () {
+        (async function () {
             performance.mark('2dog:boot');
 
             const statusOverlay = document.getElementById('status');
@@ -304,6 +332,12 @@
                 if (rows.length) console.table(rows);
             }
 
+            try {
+                await loadEngine();
+            } catch (error) {
+                displayFailureNotice(error);
+                return;
+            }
             const missing = Engine.getMissingFeatures({
                 threads: GODOT_THREADS_ENABLED,
                 renderingDriver: GODOT_CONFIG['renderingDriver'],

@@ -70,7 +70,7 @@ async function main() {
     if (process.env.GITHUB_RUN_NUMBER) assert.equal(version.version, `0.1.${process.env.GITHUB_RUN_NUMBER}`);
     if (version.build) {
       const buildUrl = new URL(`builds/${version.build}/`, url);
-      assert.equal(new URL(page.url()).pathname, buildUrl.pathname);
+      assert.equal(page.url(), url);
       const runtime = await page.evaluate(() => performance.getEntriesByType('resource')
         .map(entry => entry.name).filter(name => name.includes('/_framework/')));
       assert.ok(runtime.length > 0 && runtime.every(name => name.startsWith(buildUrl.href)));
