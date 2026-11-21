@@ -1,6 +1,32 @@
 const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 
+async function checkGameMemory(page) {
+  // The renderer leaked native image storage while standing still in room 74.
+  // Chrome's JavaScript heap counters omit Godot's WebAssembly linear memory.
+  const session = await page.context().newCDPSession(page);
+  try {
+    const { result: prototype } = await session.send('Runtime.evaluate', { expression: 'WebAssembly.Memory.prototype' });
+    const { objects } = await session.send('Runtime.queryObjects', { prototypeObjectId: prototype.objectId });
+    async function readMiB() {
+      const { result } = await session.send('Runtime.callFunctionOn', {
+        objectId: objects.objectId,
+        functionDeclaration: 'function () { return Math.max(...this.map(memory => memory.buffer.byteLength)) / 1048576; }',
+        returnByValue: true,
+      });
+      assert.ok(result.value > 0, 'Expected live WebAssembly memory');
+      return result.value;
+    }
+    const before = await readMiB();
+    await page.waitForTimeout(45_000);
+    const after = await readMiB();
+    console.log(`WebAssembly memory over 45 seconds of gameplay: ${before} -> ${after} MiB`);
+    assert.ok(after - before < 96, 'WebAssembly memory grew continuously during idle gameplay');
+  } finally {
+    await session.detach();
+  }
+}
+
 async function main() {
   const browser = await chromium.launch({
     executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome',
@@ -54,6 +80,7 @@ async function main() {
       }),
       page.keyboard.press('Enter'),
     ]);
+    await checkGameMemory(page);
     await page.evaluate(() => window.footstepLengths.clear());
     await page.keyboard.down('ArrowRight');
     try {

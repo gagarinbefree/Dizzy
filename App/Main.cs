@@ -63,7 +63,8 @@ public partial class Main : Node2D
         AddChild(effects);
         music.Finished += () => { if (title) { if (currentMusic == 0) music.Play(); else PlayMusic(0); } };
         game.ReturnToTitle();
-        texture = ImageTexture.CreateFromImage(Image.CreateEmpty(256, 192, false, Image.Format.Rgba8));
+        screenImage = Image.CreateEmpty(256, 192, false, Image.Format.Rgba8);
+        texture = ImageTexture.CreateFromImage(screenImage);
         RefreshScreen();
         if (fixture != null)
         {
@@ -259,7 +260,7 @@ public partial class Main : Node2D
                 pixels[p + 1] = (byte)((color & 4) != 0 ? intensity : 0);
                 pixels[p + 2] = (byte)((color & 1) != 0 ? intensity : 0); pixels[p + 3] = 255;
             }
-        screenImage = Image.CreateFromData(256, 192, false, Image.Format.Rgba8, pixels);
+        screenImage.SetData(256, 192, false, Image.Format.Rgba8, pixels);
         texture.Update(screenImage);
         QueueRedraw();
     }
