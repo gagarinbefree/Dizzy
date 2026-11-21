@@ -106,49 +106,33 @@
         }
 
         #status {
-            position: absolute;
+            position: fixed;
             inset: 0;
-            background-color: #242424;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 1.5rem;
+            background-color: black;
+            display: grid;
+            place-items: center;
         }
 
         #status-splash {
-            width: min(256px, 80vw, 70vh);
-            height: auto;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             image-rendering: pixelated;
-            animation: status-splash-pulse 2.4s ease-in-out infinite;
-        }
-
-        @keyframes status-splash-pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: .55;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            #status-splash {
-                animation: none;
-            }
         }
 
         #status-bar {
-            position: relative;
+            position: absolute;
+            left: 50%;
+            bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+            transform: translateX(-50%);
             width: min(60%, 320px);
             height: 6px;
             border-radius: 3px;
             overflow: hidden;
             background-color: #4a4a4a;
-            display: none;
+            box-shadow: 0 0 0 1px black;
         }
 
         /* Kept for screen readers, which announce an indeterminate progress as busy. */
