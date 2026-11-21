@@ -70,6 +70,7 @@ jobs:
           python tools/set_build_version.py "$GITHUB_RUN_NUMBER"
           dotnet build Dizzy.csproj --configuration Debug
           dotnet publish Dizzy.web --configuration Release -p:TwoDogRequireImport=true -p:TwoDogWebPrecompress=false
+          cp -R gallery Dizzy.web/AppBundle/
       - name: Test browser startup and PWA metadata
         run: |
           npm install --no-save --ignore-scripts playwright@1.56.1

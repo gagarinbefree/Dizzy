@@ -2,6 +2,14 @@
 
 [GitHub Actions](https://github.com/gagarinbefree/Dizzy/actions) · [Веб-сборка](https://gagarinbefree.github.io/Dizzy/) · [Релизы](https://github.com/gagarinbefree/Dizzy/releases)
 
+## Графика и локации
+
+[Галерея спрайтов и персонажей](https://gagarinbefree.github.io/Dizzy/gallery/gallery.html) · [Галерея локаций](https://gagarinbefree.github.io/Dizzy/gallery/locations/)
+
+В репозитории доступны [200 фоновых спрайтов, предметов и символов](gallery/sprites/), [78 кадров персонажей](gallery/characters/) и [загрузочный экран](gallery/loading-screen.png). У спрайтов прозрачный фон. Игра задаёт их цвета при отрисовке.
+
+[Снимки локаций](gallery/locations/) сохранены в PNG и в экранном формате ZX Spectrum SCR. Нумерация соответствует всем 112 индексам исходной таблицы. У 53 индексов есть записи фона, включая титульный экран 000. Стартовая комната — [074](gallery/locations/room_074.png).
+
 ## Публичные сборки
 
 GitHub Actions проверяет запуск Godot и браузерной сборки. Успешные запуски на `main` публикуют Web/PWA на GitHub Pages, ZIP для Windows x64 и подписанный APK для Android в одном GitHub Release. Версия `0.1.N` соответствует номеру запуска, Android `versionCode` равен `1000 + N`. APK также публикуется в GitHub Packages.
