@@ -111,7 +111,7 @@ jobs:
         with:
           path: .godot/windows_release_x86_64.exe
           key: godot-4.7.2-mono-windows-x64-release-abb825fa
-      - name: Install Godot and export template
+      - name: Install Godot
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
@@ -125,23 +125,12 @@ jobs:
           $godot = Get-ChildItem -LiteralPath $godotDir -Filter '*_console.exe' -File -Recurse | Select-Object -First 1 -ExpandProperty FullName
           if (!$godot) { throw 'Godot console executable missing' }
           "GODOT=$godot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          python tools/get_windows_template.py .godot/windows_release_x86_64.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $templates = Join-Path $env:APPDATA "Godot/export_templates/$env:GODOT_VERSION"
-          New-Item -ItemType Directory -Force -Path $templates | Out-Null
-          Copy-Item -LiteralPath '.godot/windows_release_x86_64.exe' -Destination $templates
-          Set-Content -LiteralPath (Join-Path $templates 'version.txt') -Value $env:GODOT_VERSION -NoNewline
       - name: Export and smoke-test Windows release
         shell: pwsh
         run: |
           python tools/set_build_version.py $env:GITHUB_RUN_NUMBER
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet build Dizzy.csproj --configuration Debug
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:GODOT --headless --path . --editor --import
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          New-Item -ItemType Directory -Force -Path build/windows | Out-Null
-          & $env:GODOT --headless --path . --export-release 'Windows Desktop' 'build/windows/Dizzy.exe'
+          ./run.ps1 -ExportWindows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($file in @('Dizzy.exe', 'Dizzy.pck', 'data_Dizzy_windows_x86_64/Dizzy.dll')) {
             if (!(Test-Path -LiteralPath "build/windows/$file")) { throw "Missing Windows file $file" }

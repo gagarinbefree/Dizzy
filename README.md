@@ -1,51 +1,55 @@
-# Dizzy — проект Godot и сборки
+# Dizzy — The Ultimate Cartoon Adventure
 
-[GitHub Actions](https://github.com/gagarinbefree/Dizzy/actions) · [Веб-сборка](https://gagarinbefree.github.io/Dizzy/) · [Релизы](https://github.com/gagarinbefree/Dizzy/releases)
+**[Play in your browser](https://gagarinbefree.github.io/Dizzy/)** · **[Download for Windows or Android](https://github.com/gagarinbefree/Dizzy/releases/latest)**
 
-## Графика и локации
+[![The original Spectrum loading screen shows Dizzy looking out across a valley towards Zaks’s castle.](gallery/loading-screen.png)](https://gagarinbefree.github.io/Dizzy/)
 
-[Галерея спрайтов и персонажей](https://gagarinbefree.github.io/Dizzy/gallery/gallery.html) · [Галерея локаций](https://gagarinbefree.github.io/Dizzy/gallery/locations/)
+Dizzy went into the Haunted Forest to pick berries. He came home with a much stranger find. Under the dirt on a stone slab was a recipe his Eggfather once told him about. Brew it properly and it can put an end to the wizard Zaks. With any luck, the Yolkfolk might even get a dry Sunday for cricket.
 
-В репозитории доступны [200 фоновых спрайтов, предметов и символов](gallery/sprites/), [78 кадров персонажей](gallery/characters/) и [загрузочный экран](gallery/loading-screen.png). У спрайтов прозрачный фон. Игра задаёт их цвета при отрисовке.
+This is a Godot port of the Oliver Twins’ 1987 single-player adventure for the 48K ZX Spectrum. Press **Space** or **Enter** on the title screen to start.
 
-[Снимки локаций](gallery/locations/) сохранены в PNG и в экранном формате ZX Spectrum SCR. Нумерация соответствует всем 112 индексам исходной таблицы. У 53 индексов есть записи фона, включая титульный экран 000. Стартовая комната — [074](gallery/locations/room_074.png).
+## The recipe on the stone
 
-## Публичные сборки
+The **Avawifforce Potion** calls for a leprechaun’s wig, the silver lining of a cloud, a feather from a Vampire Dux, and a measure of troll brew. Somewhere between the village and the castle, you’ll have to get your hands on all four.
 
-GitHub Actions проверяет запуск Godot и браузерной сборки. Успешные запуски на `main` публикуют Web/PWA на GitHub Pages, ZIP для Windows x64 и подписанный APK для Android в одном GitHub Release. Версия `0.1.N` соответствует номеру запуска, Android `versionCode` равен `1000 + N`. APK также публикуется в GitHub Packages.
+You start beside the cauldron. Find a way to light the fire beneath it, then bring the ingredients back as you find them. Remember where you leave your tools. An object that seems useless in the forest might be just what you need down a mine.
 
-Игровой мир, начальное состояние и пять музыкальных записей находятся в `Assets/` и входят в веб-сборку, Windows ZIP и Android APK. На GitHub Pages нажмите Enter или пробел на заставке, чтобы начать игру.
+| The Village of Cigam | The Deserted Diamond Mines | The Haunted Forest |
+|:---:|:---:|:---:|
+| ![Village of Cigam](gallery/locations/room_073.png) | ![Deserted Diamond Mines](gallery/locations/room_050.png) | ![Haunted Forest](gallery/locations/room_076.png) |
 
-Локальная веб-сборка с .NET 10 и `wasm-tools`:
+**A tip from the cassette.** If a ledge seems just out of reach, try jumping from a mushroom. Keep an eye out for eggs along the way. Each one gives Dizzy another life. [Original cassette instructions](https://worldofspectrum.net/pub/sinclair/games-info/d/Dizzy.txt)
+
+## Controls
+
+| Action | Keys |
+| --- | --- |
+| Start the adventure | **Space** or **Enter** |
+| Walk left / right | **Z / X** or **← / →** |
+| Jump | **Space** or **↑** |
+| Pick up, drop or use an item | **Enter** |
+| Pause / resume | **P** |
+| Return to the title screen | **Q** |
+| Start a new game | **F5** |
+
+**Windows** — Unzip the whole download and open `Dizzy.exe`. **Android** — Install the APK and connect a physical keyboard to play. The game data and music are included on every platform. [Latest downloads](https://github.com/gagarinbefree/Dizzy/releases/latest)
+
+## The Spectrum artwork
+
+Browse 200 sprites and 78 character frames, or open a room to see its original 256 × 192 pixels. The room gallery keeps the Spectrum table numbers, including the title screen at 000 and the starting room at 074. Each room also has a downloadable Spectrum screen file. [Sprite gallery](https://gagarinbefree.github.io/Dizzy/gallery/gallery.html) · [Room gallery](https://gagarinbefree.github.io/Dizzy/gallery/locations/)
+
+## Original game
+
+The Oliver Twins created *Dizzy*. Code Masters Ltd published the 48K Spectrum edition in 1987 for £1.99. The in-game credits name James Wilson for graphics and David Whittaker for music. The cassette instructions supplied the story and recipe above. [World of Spectrum archive and cassette inlay](https://worldofspectrum.org/archive/software/games/dizzy-code-masters-ltd) · [Instructions transcript](https://worldofspectrum.net/pub/sinclair/games-info/d/Dizzy.txt)
+
+## Build from source
+
+On Windows x64, open PowerShell in the folder containing `project.godot`. Install the .NET 10 SDK and start the game with this command.
 
 ```powershell
-dotnet workload install wasm-tools
-dotnet publish Dizzy.web --configuration Release -p:TwoDogRequireImport=true -p:TwoDogWebPrecompress=false
-python -m http.server 8765 --directory Dizzy.web/AppBundle
+./run.ps1
 ```
 
-Подпись Android использует `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` и `ANDROID_KEYSTORE_PASSWORD` из GitHub Actions Secrets. Следующие версии APK должны использовать тот же ключ и идентификатор `com.gagarinbefree.dizzy`.
+The launcher uses Godot 4.7.2 .NET and downloads a verified copy into `.tools/` if needed. To use your own installation, pass `-GodotPath` with the path to its executable. All game code, graphics, room data and audio come with this checkout.
 
-## Локальный проект и исследовательские проверки
-
-Запуск из PowerShell: `./run.ps1`. Можно открыть `project.godot` в Godot 4.7.2 .NET. В рабочей папке установлен официальный движок: `../.tools/godot-runtime/Godot_v4.7.2-stable_mono_win64`. SHA-256 архива сверён с опубликованным GitHub digest; метаданные — `../.tools/godot-runtime/source.json`. Другой движок задаётся параметром `-GodotPath`; сборка использует .NET SDK 10.
-
-При наличии локальных игровых данных на заставке нажать SPACE или ENTER. Z/X или стрелки — движение, SPACE — прыжок, ENTER — подбор/выкладывание, P — пауза (отпустить и нажать снова), Q — заставка, F5 — новая игра.
-
-`Core` реализует движение, экранные коллизии, восемь типов объектов, предметы, котёл, счёт, жизни, появление, гибель, возврат и таймер победы. Во время игры используются извлечённые данные; Z80-эмулятор, Python и TAP не запускаются. Локальные ресурсы копирует `prepare-assets.ps1`.
-
-Подтверждены обычным вводом все 51 локация с фоном, подбор 29/29 предметов, активация 17/17 переключателей и победа. Эти результаты получены в нескольких игровых ветвях. Все 44 обычные трассы — 214914 циклов — совпали в Python, C# и внутри Godot: после каждого цикла проверены игрок, экран, объекты, генератор, инвентарь, счёт, посещения, жизни и пазл.
-
-Повтор проверки:
-
-```powershell
-./check.ps1 -Engine
-```
-
-Без `-Engine` выполняются только проверки C#. Помимо трасс, проверяются 44704 граничных состояния, 128 фонов, 279 случаев вывода спрайтов, новая игра, 13 FE-звуковых последовательностей, 120 реакций выложенных предметов и 2510 вариантов прерывания ROM внутри RNG. Итоги сохраняются в `Artifacts/check-summary.json`; каждый проверенный эталон получает отдельные PNG и JSON. Ошибка или отсутствие эталона возвращает код 1.
-
-Разбор и исходные доказательства — `../DizzyUltimate/extracted/GAME_LOGIC.md`, `PORT_SPEC.md` и `GODOT_MIGRATION.md`. Машинный аудит готовности — `../DizzyUltimate/extracted/object-analysis/migration-readiness.json`: все конечные критерии выполнены. Полная исследовательская серия завершена: 246/246 тестов, ошибок нет.
-
-В интерактивной игре выбрана частота 60 логических циклов в секунду с отдельными задержками звуков. Переменное тактовое время Z80 пока не воспроизведено. Музыка проигрывается из пяти записей исходного цифрового выхода при номинальных 3,5 МГц. Скрытый выбор комнаты оригинального меню пока реализован в исследовательской Python-модели.
-
-Отдельно разобран эффект ROM: прерывание клавиатуры внутри `$E734` при IY=$E759 может установить бит 5 байта RNG `$E75A`. `AdvanceRandom` воспроизводит четыре позиции такого воздействия; 2510 случаев совпали с оригиналом. Автоматического тактового планировщика этих прерываний в интерактивном Godot пока нет, генератор выполняется атомарно.
+To build the Windows release, install Python 3 and run `./run.ps1 -ExportWindows`. The executable and its companion files land in `build/windows/`. To check startup and play through 240 game ticks without opening a window, run `./run.ps1 -SmokeTest`. GitHub Actions also builds the web version and signs the Android APK. [Build workflow](.github/workflows/web.yml)

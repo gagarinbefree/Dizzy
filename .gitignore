@@ -1,4 +1,5 @@
 .godot/
+.tools/
 **/bin/
 **/obj/
 Artifacts/

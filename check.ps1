@@ -1,9 +1,8 @@
 param(
     [switch]$Engine,
-    [string]$GodotPath = (Join-Path $PSScriptRoot '..\.tools\godot-runtime\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe')
+    [string]$GodotPath = $env:GODOT
 )
 $ErrorActionPreference = 'Stop'
-$env:DOTNET_CLI_HOME = Join-Path $PSScriptRoot '..\.tools\dotnet-home'
 $env:DOTNET_NOLOGO = '1'
 $researchRoot = Join-Path $PSScriptRoot '..\DizzyUltimate\extracted'
 $coverage = Get-Content -LiteralPath (Join-Path $researchRoot 'object-analysis\route-coverage-audit.json') -Raw | ConvertFrom-Json
@@ -23,14 +22,13 @@ function Save-CheckSummary {
 }
 Save-CheckSummary
 $fixturePaths = @($coverage.ordinary_sources | ForEach-Object { Join-Path $researchRoot ('object-analysis\' + $_.fixture) })
-& 'C:\Program Files\dotnet\dotnet.exe' run --project (Join-Path $PSScriptRoot 'Tests\KernelChecks.csproj') --no-restore -- (Join-Path $researchRoot 'godot-port-data') @fixturePaths
+& dotnet run --project (Join-Path $PSScriptRoot 'Tests\KernelChecks.csproj') -- (Join-Path $researchRoot 'godot-port-data') @fixturePaths
 if ($LASTEXITCODE -ne 0) { throw 'C# reference checks failed' }
 $summary.kernel_passed = $true
 Save-CheckSummary
 if ($Engine) {
-    if (!(Test-Path -LiteralPath $GodotPath)) { throw 'Pass the Godot .NET executable using -GodotPath.' }
-    if (!(Test-Path -LiteralPath (Join-Path $PSScriptRoot 'Assets\start-state.json'))) { & (Join-Path $PSScriptRoot 'prepare-assets.ps1') }
-    & 'C:\Program Files\dotnet\dotnet.exe' build (Join-Path $PSScriptRoot 'Dizzy.csproj') --no-restore
+    $GodotPath = & (Join-Path $PSScriptRoot 'tools/get-godot.ps1') -GodotPath $GodotPath
+    & dotnet build (Join-Path $PSScriptRoot 'Dizzy.csproj')
     if ($LASTEXITCODE -ne 0) { throw 'Godot C# build failed' }
     & $GodotPath --headless --path $PSScriptRoot --editor --import --quit --quiet
     if ($LASTEXITCODE -ne 0) { throw 'Godot import failed' }
