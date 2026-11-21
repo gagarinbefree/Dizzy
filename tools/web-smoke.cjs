@@ -14,12 +14,12 @@ async function main() {
       errors.push(error.message);
     });
     await page.addInitScript(() => {
-      window.shortSounds = 0;
-      const start = AudioBufferSourceNode.prototype.start;
-      AudioBufferSourceNode.prototype.start = function (...args) {
-        const result = start.apply(this, args);
-        if (this.buffer && this.buffer.duration > 0 && this.buffer.duration < 0.05) window.shortSounds++;
-        return result;
+      window.footstepLengths = new Set();
+      const createBuffer = BaseAudioContext.prototype.createBuffer;
+      BaseAudioContext.prototype.createBuffer = function (...args) {
+        const buffer = createBuffer.apply(this, args);
+        if (buffer.duration < 0.05) window.footstepLengths.add(buffer.length);
+        return buffer;
       };
     });
     const ready = page.waitForEvent('console', {
@@ -35,10 +35,12 @@ async function main() {
       }),
       page.keyboard.press('Enter'),
     ]);
-    const baseline = await page.evaluate(() => window.shortSounds);
+    await page.evaluate(() => window.footstepLengths.clear());
     await page.keyboard.down('ArrowRight');
     try {
-      await page.waitForFunction(n => window.shortSounds >= n + 2, baseline, { timeout: 30_000 });
+      // The two alternating footsteps have different lengths. This also works
+      // when the browser plays the samples through an AudioWorklet.
+      await page.waitForFunction(() => window.footstepLengths.size >= 2, null, { timeout: 30_000 });
     } finally {
       await page.keyboard.up('ArrowRight');
     }
