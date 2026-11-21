@@ -14,6 +14,11 @@ async function main() {
       errors.push(error.message);
     });
     await page.addInitScript(() => {
+      const play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function (...args) {
+        if (this.src.endsWith('/0-title.wav')) window.loadingTheme = this;
+        return play.apply(this, args);
+      };
       window.footstepLengths = new Set();
       const createBuffer = BaseAudioContext.prototype.createBuffer;
       BaseAudioContext.prototype.createBuffer = function (...args) {
@@ -22,11 +27,25 @@ async function main() {
         return buffer;
       };
     });
+    const url = process.env.DIZZY_WEB_URL || 'http://127.0.0.1:8765/';
+    let continueBoot;
+    const bootGate = new Promise(resolve => { continueBoot = resolve; });
+    await page.route('**/version.json?*', async route => { await bootGate; await route.continue(); });
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => !document.querySelector('#enable-music').hidden || window.loadingTheme?.currentTime > 0);
+    const musicButton = page.locator('#enable-music');
+    if (await musicButton.isVisible()) await musicButton.click();
+    await page.waitForFunction(() => window.loadingTheme.currentTime > 0.25);
+    await page.evaluate(() => {
+      const finish = window.dizzyLoadingMusic.finish;
+      window.dizzyLoadingMusic.finish = () => (window.titleMusicOffset = finish());
+    });
     const ready = page.waitForEvent('console', {
       predicate: message => message.text().includes('DIZZY_TITLE_READY'), timeout: 120_000,
     });
-    const url = process.env.DIZZY_WEB_URL || 'http://127.0.0.1:8765/';
-    await Promise.all([ready, page.goto(url)]);
+    continueBoot();
+    await ready;
+    assert.ok(await page.evaluate(() => window.titleMusicOffset > 0 && window.loadingTheme.paused));
     assert.equal(await page.locator('canvas#canvas').isVisible(), true);
     await page.locator('canvas#canvas').focus();
     await Promise.all([

@@ -127,6 +127,14 @@
             image-rendering: pixelated;
         }
 
+        #enable-music {
+            position: absolute;
+            right: 0.75rem;
+            top: 0.75rem;
+        }
+
+        #enable-music[hidden] { display: none; }
+
         #status-bar {
             position: absolute;
             left: 50%;
@@ -200,6 +208,7 @@
     <div id="status">
         <div id="status-artwork">
             <img id="status-splash" src="load.png" width="512" height="320" alt="Dizzy looking across the valley towards Zaks’s castle">
+            <button id="enable-music" type="button" class="btn btn-neutral btn-sm" hidden>Play music</button>
             <div id="status-bar"><progress id="status-progress" aria-label="Loading progress"></progress></div>
         </div>
         <div id="status-notice" class="alert" role="alert"></div>
@@ -223,6 +232,36 @@
             const statusOverlay = document.getElementById('status');
             const statusBar = document.getElementById('status-bar');
             const statusNotice = document.getElementById('status-notice');
+            const musicButton = document.getElementById('enable-music');
+            const loadingMusic = new Audio();
+            loadingMusic.loop = true;
+            loadingMusic.volume = 10 ** (-8 / 20); // Match the title player's volume in Godot.
+            loadingMusic.src = new URL('0-title.wav', location.href).href;
+
+            async function playLoadingMusic() {
+                try {
+                    await loadingMusic.play();
+                    musicButton.hidden = true;
+                } catch (error) {
+                    musicButton.hidden = error.name !== 'NotAllowedError' || !loadingMusic.hasAttribute('src');
+                }
+            }
+
+            function finishLoadingMusic() {
+                if (!loadingMusic.hasAttribute('src')) return 0;
+                const position = loadingMusic.currentTime;
+                loadingMusic.pause();
+                loadingMusic.removeAttribute('src');
+                loadingMusic.load();
+                musicButton.hidden = true;
+                statusOverlay.removeEventListener('click', playLoadingMusic);
+                delete window.dizzyLoadingMusic;
+                return position;
+            }
+
+            window.dizzyLoadingMusic = { finish: finishLoadingMusic };
+            statusOverlay.addEventListener('click', playLoadingMusic);
+            playLoadingMusic();
 
             let initializing = true;
             let statusMode = '';
@@ -232,6 +271,7 @@
                     return;
                 }
                 if (mode === 'hidden') {
+                    finishLoadingMusic();
                     statusOverlay.remove();
                     initializing = false;
                     return;
@@ -242,6 +282,7 @@
             }
 
             function displayFailureNotice(err) {
+                finishLoadingMusic();
                 console.error(err);
                 statusNotice.textContent = typeof err?.message === 'string' ? err.message : String(err);
                 setStatusMode('notice');

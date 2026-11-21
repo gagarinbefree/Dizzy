@@ -27,6 +27,7 @@
     <ItemGroup>
         <ProjectReference Include="../Dizzy.csproj"/>
         <WasmExtraFilesToDeploy Include="../Assets/load.png" />
+        <WasmExtraFilesToDeploy Include="../Assets/Audio/0-title.wav" />
     </ItemGroup>
 
     <!-- Scripts are resolved by reflection: root the game assembly, and any NuGet package your game reaches

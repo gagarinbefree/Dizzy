@@ -91,7 +91,8 @@ public partial class Main : Node2D
         }
         else
         {
-            PlayMusic(0);
+            using var loadingMusic = OS.HasFeature("web") ? JavaScriptBridge.GetInterface("dizzyLoadingMusic") : null;
+            PlayMusic(0, loadingMusic?.Call("finish").AsSingle() ?? 0f);
             GD.Print("DIZZY_TITLE_READY");
         }
     }
@@ -137,7 +138,7 @@ public partial class Main : Node2D
         GD.Print($"GODOT_REPLAY_OK cycles={ticks} status={status} lives={game.Lives}");
     }
 
-    private void PlayMusic(int number)
+    private void PlayMusic(int number, float fromPosition = 0f)
     {
         string[] names = ["0-title", "1-start", "2-death", "3-game-over", "4-victory"];
         currentMusic = number;
@@ -145,7 +146,7 @@ public partial class Main : Node2D
         music.Stream = assetRoot == "res://Assets"
             ? (ResourceLoader.Exists(path) ? GD.Load<AudioStream>(path) : null)
             : (FileAccess.FileExists(path) ? AudioStreamWav.LoadFromFile(path) : null);
-        if (music.Stream != null && DisplayServer.GetName() != "headless") music.Play();
+        if (music.Stream != null && DisplayServer.GetName() != "headless") music.Play(fromPosition);
     }
 
     private void StartGame()
