@@ -1,4 +1,4 @@
-"""Stamp the same release number into Godot, Android and the browser bundle."""
+"""Stamp the workflow version into Godot and the browser bundle."""
 
 import argparse
 import json
@@ -18,13 +18,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_number", type=int)
     args = parser.parse_args()
-    if not 0 <= args.run_number < 2_099_999_000:
-        parser.error("run number is outside the Android version-code range")
+    if args.run_number < 0:
+        parser.error("run number must be nonnegative")
     version = f"0.1.{args.run_number}"
     replace_setting(Path("project.godot"), "config/version", json.dumps(version))
-    preset = Path("export_presets.cfg")
-    replace_setting(preset, "version/code", args.run_number + 1000)
-    replace_setting(preset, "version/name", json.dumps(version))
     Path("Dizzy.web/wwwroot/version.json").write_text(json.dumps({"version": version}) + "\n", encoding="utf-8")
 
 

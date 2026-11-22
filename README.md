@@ -1,6 +1,6 @@
 # Dizzy — The Ultimate Cartoon Adventure
 
-**[Play in your browser](https://gagarinbefree.github.io/Dizzy/)** · **[Download for Windows or Android](https://github.com/gagarinbefree/Dizzy/releases/latest)**
+**[Play in your browser](https://gagarinbefree.github.io/Dizzy/)**
 
 [![The original Spectrum loading screen shows Dizzy looking out across a valley towards Zaks’s castle.](Assets/load.png)](https://gagarinbefree.github.io/Dizzy/)
 
@@ -32,8 +32,6 @@ You start beside the cauldron. Find a way to light the fire beneath it, then bri
 | Return to the title screen | **Q** |
 | Start a new game | **F5** |
 
-**Windows** — Unzip the whole download and open `Dizzy.exe`. **Android** — Install the APK and connect a physical keyboard to play. The game data and music are included on every platform. [Latest downloads](https://github.com/gagarinbefree/Dizzy/releases/latest)
-
 ## The Spectrum artwork
 
 Browse 200 sprites and 78 character frames, or open a room to see its original 256 × 192 pixels. The room gallery keeps the Spectrum table numbers, including the title screen at 000 and the starting room at 074. Each room also has a downloadable Spectrum screen file. [Sprite gallery](https://gagarinbefree.github.io/Dizzy/gallery/gallery.html) · [Room gallery](https://gagarinbefree.github.io/Dizzy/gallery/locations/)
@@ -42,7 +40,7 @@ Browse 200 sprites and 78 character frames, or open a room to see its original 2
 
 The Oliver Twins created *Dizzy*. Code Masters Ltd published the 48K Spectrum edition in 1987 for £1.99. The in-game credits name James Wilson for graphics and David Whittaker for music. The cassette instructions supplied the story and recipe above. [World of Spectrum archive and cassette inlay](https://worldofspectrum.org/archive/software/games/dizzy-code-masters-ltd) · [Instructions transcript](https://worldofspectrum.net/pub/sinclair/games-info/d/Dizzy.txt)
 
-## Build from source
+## Run from source
 
 On Windows x64, open PowerShell in the folder containing `project.godot`. Install the .NET 10 SDK and start the game with this command.
 
@@ -52,4 +50,4 @@ On Windows x64, open PowerShell in the folder containing `project.godot`. Instal
 
 The launcher uses Godot 4.7.2 .NET and downloads a verified copy into `.tools/` if needed. To use your own installation, pass `-GodotPath` with the path to its executable. All game code, graphics, room data and audio come with this checkout.
 
-To build the Windows release, install Python 3 and run `./run.ps1 -ExportWindows`. The executable and its companion files land in `build/windows/`. To check startup and play through 240 game ticks without opening a window, run `./run.ps1 -SmokeTest`. GitHub Actions also builds the web version and signs the Android APK. [Build workflow](.github/workflows/web.yml)
+GitHub Actions builds the web version, tests it in Chrome and publishes it to GitHub Pages. [Build workflow](.github/workflows/web.yml)
