@@ -175,6 +175,15 @@
             text-decoration: underline;
         }
 
+        #loading-caption {
+            padding: 0.125rem 0.375rem;
+            border-radius: 3px;
+            color: white;
+            background: #151515;
+            font: 0.75rem/1rem system-ui, sans-serif;
+            font-variant-numeric: tabular-nums;
+        }
+
         #status-bar {
             position: relative;
             width: 100%;
@@ -185,16 +194,21 @@
             box-shadow: 0 0 0 2px black;
         }
 
-        /* Kept for screen readers, which announce an indeterminate progress as busy. */
         #status-progress {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
+            display: block;
+            appearance: none;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: transparent;
         }
 
-        /* Engine startup blocks the page for seconds, freezing a native progress bar;
-           a transform animation runs on the compositor and keeps moving. */
-        #status-bar::after {
+        #status-progress::-webkit-progress-bar { background: transparent; }
+        #status-progress::-webkit-progress-value { background: #0000e8; }
+        #status-progress::-moz-progress-bar { background: #0000e8; }
+        #status-progress:not([value]) { opacity: 0; }
+
+        #status-bar:has(progress:not([value]))::after {
             content: '';
             position: absolute;
             inset: 0;
@@ -247,7 +261,8 @@
             <img id="status-splash" src="load.png" width="512" height="320" alt="Dizzy looking across the valley towards Zaks’s castle">
             <button id="enable-music" type="button" class="btn btn-neutral btn-sm" hidden>Play music</button>
             <div id="loading-footer">
-                <div id="status-bar"><progress id="status-progress" aria-label="Loading progress"></progress></div>
+                <span id="loading-caption" aria-hidden="true">Loading…</span>
+                <div id="status-bar"><progress id="status-progress" max="100" aria-label="Downloading game files"></progress></div>
                 <a class="link" href="https://github.com/gagarinbefree/Dizzy" target="_blank" rel="noopener noreferrer">Dizzy on GitHub</a>
             </div>
         </div>
@@ -271,6 +286,8 @@
 
             const statusOverlay = document.getElementById('status');
             const statusBar = document.getElementById('status-bar');
+            const progress = document.getElementById('status-progress');
+            const caption = document.getElementById('loading-caption');
             const statusNotice = document.getElementById('status-notice');
             const musicButton = document.getElementById('enable-music');
             const loadingMusic = new Audio();
@@ -319,6 +336,7 @@
                     return;
                 }
                 statusBar.style.display = mode === 'progress' ? 'block' : 'none';
+                caption.hidden = mode !== 'progress';
                 statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
                 statusMode = mode;
             }
@@ -334,7 +352,13 @@
             let downloadsDone = false;
 
             function reportProgress(current, total) {
-                if (!downloadsDone && total > 0 && current >= total) {
+                if (downloadsDone || !(total > 0)) return;
+                const percent = Math.min(100, Math.floor(100 * current / total));
+                if (progress.position >= 0 && percent <= progress.value) return;
+                progress.value = percent;
+                caption.textContent = percent === 100 ? '100% · Starting game…' : percent + '%';
+                if (percent === 100) {
+                    progress.setAttribute('aria-valuetext', 'Downloaded. Starting game.');
                     downloadsDone = true;
                     performance.mark('2dog:downloads-done');
                 }
@@ -352,13 +376,11 @@
                         return makeEngine('').startGame({});
                     }
                     const engine = makeEngine('.gz');
-                    // The engine only downloads the wasm here; this page fetches
-                    // and inflates the pack, merging both into one download
-                    // timing (compressed pack bytes against its Content-Length).
+                    // Count decoded bytes for both files so they match the build manifest.
                     let pckLoaded = 0;
                     let wasmLoaded = 0;
                     let wasmTotal = fileSizes['godot.wasm'] || 0;
-                    const pckTotal = Number(response.headers.get('Content-Length')) || 0;
+                    const pckTotal = fileSizes['godot.pck'] || 0;
                     const report = () => reportProgress(wasmLoaded + pckLoaded,
                         wasmTotal > 0 && pckTotal > 0 ? wasmTotal + pckTotal : 0);
                     engineProgress = (current, total) => {
@@ -374,7 +396,7 @@
                         },
                     });
                     const pack = new Response(
-                        response.body.pipeThrough(counted).pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+                        response.body.pipeThrough(new DecompressionStream('gzip')).pipeThrough(counted)).arrayBuffer();
                     return Promise.all([
                         engine.init(GODOT_CONFIG['executable']),
                         pack.then((buffer) => engine.preloadFile(buffer, 'godot.pck')),
@@ -442,6 +464,8 @@
                     return new Engine(GODOT_CONFIG);
                 };
                 setStatusMode('progress');
+                const downloadSize = fileSizes['godot.wasm'] + fileSizes['godot.pck'];
+                reportProgress(0, downloadSize);
                 const started = twodogGz
                     ? startWithGzPack(fileSizes, makeEngine)
                     : makeEngine('').startGame({});

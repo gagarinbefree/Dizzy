@@ -40,6 +40,12 @@ async function main() {
       errors.push(error.message);
     });
     await page.addInitScript(() => {
+      window.downloadPercentages = [];
+      document.addEventListener('DOMContentLoaded', () => {
+        const progress = document.querySelector('#status-progress');
+        new MutationObserver(() => window.downloadPercentages.push(progress.value))
+          .observe(progress, { attributes: true, attributeFilter: ['value'] });
+      });
       const play = HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play = function (...args) {
         if (this.src.endsWith('/0-title.mp3')) window.loadingTheme = this;
@@ -69,8 +75,17 @@ async function main() {
     const ready = page.waitForEvent('console', {
       predicate: message => message.text().includes('DIZZY_TITLE_READY'), timeout: 120_000,
     });
+    assert.equal(await page.locator('#status-progress').evaluate(bar => bar.position), -1);
     continueBoot();
     await ready;
+    async function checkDownloadProgress() {
+      await page.waitForFunction(() => window.downloadPercentages.includes(100));
+      const values = await page.evaluate(() => window.downloadPercentages);
+      assert.equal(values[0], 0);
+      assert.deepEqual(values, [...values].sort((a, b) => a - b));
+      console.log('Download progress (%):', values.join(', '));
+    }
+    await checkDownloadProgress();
     assert.ok(await page.evaluate(() => window.titleMusicOffset > 0 && window.loadingTheme.paused));
     assert.equal(await page.locator('canvas#canvas').isVisible(), true);
     await page.locator('canvas#canvas').focus();
@@ -135,6 +150,8 @@ async function main() {
       } finally {
         await page.context().setOffline(false);
       }
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await checkDownloadProgress();
     }
     assert.deepEqual(errors, []);
     console.log(`Browser build ${version.version} played footsteps and started a second game after movement and jump input.`);
