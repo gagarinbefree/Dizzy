@@ -157,7 +157,7 @@
         #loading-footer {
             position: absolute;
             left: 50%;
-            bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+            bottom: max(12%, calc(0.5rem + env(safe-area-inset-bottom, 0px)));
             transform: translateX(-50%);
             width: min(60%, 320px);
             display: grid;
@@ -170,18 +170,19 @@
             border-radius: 3px;
             background: #151515;
             color: white;
-            font: 0.875rem/1.25 system-ui, sans-serif;
+            font: 0.75rem/1rem -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+                Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
             text-decoration: underline;
         }
 
         #status-bar {
             position: relative;
             width: 100%;
-            height: 6px;
-            border-radius: 3px;
+            height: 10px;
+            border-radius: 5px;
             overflow: hidden;
-            background-color: #4a4a4a;
-            box-shadow: 0 0 0 1px black;
+            background-color: #e8e8e8;
+            box-shadow: 0 0 0 2px black;
         }
 
         /* Kept for screen readers, which announce an indeterminate progress as busy. */
@@ -197,18 +198,18 @@
             content: '';
             position: absolute;
             inset: 0;
-            width: 30%;
-            background-color: #e0e0e0;
-            animation: status-busy 1.2s ease-in-out infinite;
+            width: calc(100% / 3);
+            background-color: #0000e8;
+            animation: status-busy 1.2s ease-in-out infinite alternate;
         }
 
         @keyframes status-busy {
             from {
-                transform: translateX(-100%);
+                transform: translateX(0);
             }
 
             to {
-                transform: translateX(340%);
+                transform: translateX(200%);
             }
         }
 
