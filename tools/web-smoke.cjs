@@ -42,7 +42,7 @@ async function main() {
     await page.addInitScript(() => {
       const play = HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play = function (...args) {
-        if (this.src.endsWith('/0-title.wav')) window.loadingTheme = this;
+        if (this.src.endsWith('/0-title.mp3')) window.loadingTheme = this;
         return play.apply(this, args);
       };
       window.footstepLengths = new Set();
@@ -120,6 +120,21 @@ async function main() {
       const runtime = await page.evaluate(() => performance.getEntriesByType('resource')
         .map(entry => entry.name).filter(name => name.includes('/_framework/')));
       assert.ok(runtime.length > 0 && runtime.every(name => name.startsWith(buildUrl.href)));
+      const wasmUrl = new URL('godot.wasm', buildUrl).href;
+      await page.waitForFunction(async url => Boolean(await caches.match(url)), wasmUrl);
+      await page.context().setOffline(true);
+      try {
+        const magic = await page.evaluate(async url => {
+          const response = await fetch(url, { cache: 'no-store' });
+          const reader = response.body.getReader();
+          const chunk = await reader.read();
+          void reader.cancel();
+          return Array.from(chunk.value.slice(0, 4));
+        }, wasmUrl);
+        assert.deepEqual(magic, [0, 97, 115, 109], 'Expected the cached WebAssembly engine');
+      } finally {
+        await page.context().setOffline(false);
+      }
     }
     assert.deepEqual(errors, []);
     console.log(`Browser build ${version.version} played footsteps and started a second game after movement and jump input.`);

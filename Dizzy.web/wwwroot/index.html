@@ -7,15 +7,12 @@
     <title>Dizzy</title>
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#000000">
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" media="print" onload="this.media='all'" fetchpriority="low">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="shortcut icon" href="favicon.ico">
-    <!-- Start the big downloads before godot.js even runs; the dotnet.* files
-         are otherwise only discovered mid-boot. -->
     <script>
         // Opt-in: fetch the .gz siblings the 2dog publish writes (engine, pack
         // and _framework binaries) and inflate them in the page. For hosts that
@@ -26,6 +23,30 @@
         const TWODOG_PCK_GZ = false;
         // The hints must name the files the engine fetches, or both download.
         const twodogGz = TWODOG_PCK_GZ && typeof DecompressionStream !== 'undefined';
+        async function enableEngineCache() {
+            if (!('serviceWorker' in navigator)) return;
+            const workers = navigator.serviceWorker;
+            const url = new URL('engine-cache.js', location.href).href;
+            if (workers.controller?.scriptURL === url) return;
+            // Start even if the browser blocks registration or activation is slow.
+            let timer;
+            let onChange;
+            try {
+                const controlled = new Promise(resolve => {
+                    onChange = () => { if (workers.controller?.scriptURL === url) resolve(); };
+                    workers.addEventListener('controllerchange', onChange);
+                });
+                await Promise.race([
+                    workers.register(url).then(() => controlled),
+                    new Promise(resolve => { timer = setTimeout(resolve, 1500); }),
+                ]);
+            } catch {
+                // The engine can always load directly from Pages.
+            } finally {
+                clearTimeout(timer);
+                workers.removeEventListener('controllerchange', onChange);
+            }
+        }
         async function loadEngine() {
             const home = new URL(location.href);
             if (home.searchParams.has('_dizzy_home')) {
@@ -36,7 +57,7 @@
             pointer.searchParams.set('t', Date.now());
             const response = await fetch(pointer, { cache: 'no-store' });
             if (!response.ok) throw new Error('Could not load the game version.');
-            const { build } = await response.json();
+            const { build, fileSizes } = await response.json();
             if (build !== undefined) {
                 if (!/^\d+-\d+$/.test(build)) throw new Error('Invalid game build.');
                 const manifest = document.querySelector('link[rel="manifest"]');
@@ -45,27 +66,25 @@
                 base.href = new URL('builds/' + build + '/', location.href).href;
                 document.head.prepend(base);
             }
-            for (const file of ['godot.wasm', 'godot.pck']) {
-                const hint = document.createElement('link');
-                hint.rel = 'preload';
-                hint.as = 'fetch';
-                hint.crossOrigin = 'anonymous';
-                hint.href = twodogGz ? file + '.gz' : file;
-                document.head.appendChild(hint);
-            }
+            const scriptReady = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'godot.js';
+                script.fetchPriority = 'high';
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('Could not load the game engine.'));
+                document.head.appendChild(script);
+            });
             for (const file of ['dotnet.js', 'dotnet.boot.js', 'dotnet.runtime.js', 'dotnet.native.js']) {
                 const hint = document.createElement('link');
                 hint.rel = 'modulepreload';
                 hint.href = '_framework/' + file;
                 document.head.appendChild(hint);
             }
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = 'godot.js';
-                script.onload = resolve;
-                script.onerror = () => reject(new Error('Could not load the game engine.'));
-                document.head.appendChild(script);
-            });
+            const sizes = fileSizes ?? fetch('twodog.sizes.json')
+                .then(response => response.ok ? response.json() : {})
+                .catch(() => ({}));
+            await Promise.all([scriptReady, build ? enableEngineCache() : Promise.resolve()]);
+            return sizes;
         }
     </script>
     <style>
@@ -236,7 +255,8 @@
             const loadingMusic = new Audio();
             loadingMusic.loop = true;
             loadingMusic.volume = 10 ** (-8 / 20); // Match the title player's volume in Godot.
-            loadingMusic.src = new URL('0-title.wav', location.href).href;
+            loadingMusic.preload = 'none';
+            loadingMusic.src = new URL('0-title.mp3', location.href).href;
 
             async function playLoadingMusic() {
                 try {
@@ -365,8 +385,9 @@
                 if (rows.length) console.table(rows);
             }
 
+            let fileSizes;
             try {
-                await loadEngine();
+                fileSizes = await loadEngine();
             } catch (error) {
                 displayFailureNotice(error);
                 return;
@@ -385,32 +406,29 @@
             // Exact sizes written by the publish split the first-frame timing
             // into downloading and starting (Content-Length is the compressed
             // size on hosts that gzip, so headers lie).
-            fetch('twodog.sizes.json')
-                .then((response) => (response.ok ? response.json() : {}))
-                .catch(() => ({}))
-                .then((fileSizes) => {
-                    // The suffix decides which files the engine fetches, so
-                    // the Engine is only constructed after the pack probe has
-                    // picked a path - a '.gz'-configured engine in the
-                    // fallback would re-request the sibling that just 404'd.
-                    const makeEngine = (suffix) => {
-                        GODOT_CONFIG['fileSizes'] = fileSizes;
-                        GODOT_CONFIG['onProgress'] = (current, total) => engineProgress(current, total);
-                        // Newer engines also inflate .gz siblings themselves
-                        // (godot.wasm.gz included); older ones ignore this key.
-                        GODOT_CONFIG['precompressedSuffix'] = suffix;
-                        return new Engine(GODOT_CONFIG);
-                    };
-                    setStatusMode('progress');
-                    const started = twodogGz
-                        ? startWithGzPack(fileSizes, makeEngine)
-                        : makeEngine('').startGame({});
-                    return started.then(() => {
-                        reportTimings();
-                        setStatusMode('hidden');
-                    }, displayFailureNotice);
-                })
-                .catch(displayFailureNotice);
+            try {
+                // The suffix decides which files the engine fetches, so
+                // the Engine is only constructed after the pack probe has
+                // picked a path - a '.gz'-configured engine in the
+                // fallback would re-request the sibling that just 404'd.
+                const makeEngine = (suffix) => {
+                    GODOT_CONFIG['fileSizes'] = fileSizes;
+                    GODOT_CONFIG['onProgress'] = (current, total) => engineProgress(current, total);
+                    // Newer engines also inflate .gz siblings themselves
+                    // (godot.wasm.gz included); older ones ignore this key.
+                    GODOT_CONFIG['precompressedSuffix'] = suffix;
+                    return new Engine(GODOT_CONFIG);
+                };
+                setStatusMode('progress');
+                const started = twodogGz
+                    ? startWithGzPack(fileSizes, makeEngine)
+                    : makeEngine('').startGame({});
+                await started;
+                reportTimings();
+                setStatusMode('hidden');
+            } catch (error) {
+                displayFailureNotice(error);
+            }
         }());
     </script>
 </body>

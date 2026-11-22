@@ -77,12 +77,14 @@ jobs:
           mv Dizzy.web/AppBundle "$SITE/builds/$BUILD"
           BUNDLE="$SITE/builds/$BUILD"
           mv "$BUNDLE/index.html" "$SITE/index.html"
+          mv "$BUNDLE/engine-cache.js" "$SITE/"
           cp tools/pages-entry.html "$BUNDLE/index.html"
           cp tools/pages-entry.html "$SITE/404.html"
           cp -R gallery "$SITE/"
           cp "$BUNDLE"/{manifest.webmanifest,icon-*.png,favicon*,load.png} "$SITE/"
-          mv "$BUNDLE/0-title.wav" "$SITE/"
-          jq --arg build "$BUILD" '. + {build: $build}' "$BUNDLE/version.json" > "$SITE/version.json"
+          mv "$BUNDLE/0-title.mp3" "$SITE/"
+          jq --arg build "$BUILD" --slurpfile sizes "$BUNDLE/twodog.sizes.json" \
+            '. + {build: $build, fileSizes: $sizes[0]}' "$BUNDLE/version.json" > "$SITE/version.json"
       - name: Test browser startup and PWA metadata
         run: |
           npm install --no-save --ignore-scripts playwright@1.56.1

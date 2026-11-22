@@ -13,6 +13,10 @@
              '.2dog' assembly name is not a valid namespace). -->
         <RootNamespace>Dizzy.Web</RootNamespace>
     </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <EmccLinkOptimizationFlag>-Oz</EmccLinkOptimizationFlag>
+        <InvariantGlobalization>true</InvariantGlobalization>
+    </PropertyGroup>
     <!-- Godot project location: the parent directory (hosts are nested inside
          the Godot project, hidden from the Godot editor by their .gdignore) -->
     <PropertyGroup>
@@ -27,7 +31,6 @@
     <ItemGroup>
         <ProjectReference Include="../Dizzy.csproj"/>
         <WasmExtraFilesToDeploy Include="../Assets/load.png" />
-        <WasmExtraFilesToDeploy Include="../Assets/Audio/0-title.wav" />
     </ItemGroup>
 
     <!-- Scripts are resolved by reflection: root the game assembly, and any NuGet package your game reaches
